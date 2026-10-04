@@ -1,20 +1,44 @@
 import { FiTrash } from "react-icons/fi";
+import { api } from "./services/api";
+import { useCallback, useEffect, useState } from "react";
+
+interface CustomerProps{
+  id: string;
+  name: string;
+  email: string;
+  status: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function App() {
+  const [customers, setCustomers] = useState<CustomerProps[]>([])
+
+  const loadCustomers = useCallback(async () => {
+    const response = await api.get("/customers");
+    setCustomers(response.data);
+  }
+, []);
+
+  useEffect(() => {
+    loadCustomers();
+  },[loadCustomers])
+
+
   return (
     <div className="w-full min-h-screen bg-gray-900 flex justify-center px-4">
       <main className="my-10 w-full md:max-w-2xl">
         <h1 className="text-4xl font-medium text-white">Clientes</h1>
 
         <form className="flex flex-col my-6">
-          <label className="font-medium text-white">Nome:</label>
+          <label htmlFor="customer-name" className="font-medium text-white">Nome:</label>
           <input
             type="text"
             placeholder="Digite seu nome completo"
             className="w-full mb-5 p-2 rounded bg-white"
           />
 
-          <label className="font-medium text-white">Email</label>
+          <label htmlFor="customer-email" className="font-medium text-white">Email</label>
           <input
             type="email"
             placeholder="Digite seu nome completo"
@@ -28,22 +52,25 @@ export default function App() {
           />
         </form>
 
-        <section>
-          <article className="w-full bg-white rounded p-2 relative hover:scale-105 duration-350">
-            <p>
-              <span className="font-medium">Nome:</span> Hugo
-            </p>
-            <p>
-              <span className="font-medium">Email:</span> hugo@mail.com
-            </p>
-            <p>
-              <span className="font-medium">Status:</span> Ativo
-            </p>
+        <section className="flex flex-col">
+          {customers.map( (customer: CustomerProps) => (
+            <article key={customer.id} className="w-full bg-white rounded p-2 relative hover:scale-105 duration-350">
+              <p>
+                <span className="font-medium">Nome:</span> {customer.name}
+              </p>
+              <p>
+                <span className="font-medium">Email:</span> {customer.email}
+              </p>
+              <p>
+                <span className="font-medium">Status:</span> {customer.status ? "ATIVO" : "INATIVO"}
+              </p>
 
-            <button className="bg-red-500 w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 -top-2">
-              <FiTrash size={18} color="#fff" />
-            </button>
-          </article>
+              <button type="submit" className="bg-red-500 w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 -top-2">
+                <FiTrash size={18} color="#fff" />
+              </button>
+            </article>
+
+          ))}
         </section>
       </main>
     </div>
