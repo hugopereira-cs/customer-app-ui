@@ -41,7 +41,18 @@ export default function App() {
       email: emailRef.current?.value,
     });
 
-    setCustomers(allCustomers => [...allCustomers, response.data])
+    setCustomers((allCustomers) => [...allCustomers, response.data]);
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await api.delete(`/customers/${id}`);
+
+      const allCustomers = customers.filter((customer) => customer.id !== id);
+      setCustomers(allCustomers);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   return (
@@ -97,6 +108,7 @@ export default function App() {
               <button
                 type="submit"
                 className="bg-red-500 w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 -top-2"
+                onClick={() => handleDelete(customer.id)}
               >
                 <FiTrash size={18} color="#fff" />
               </button>
