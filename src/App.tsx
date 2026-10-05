@@ -1,8 +1,14 @@
 import { FiTrash } from "react-icons/fi";
 import { api } from "./services/api";
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  type SubmitEvent,
+} from "react";
 
-interface CustomerProps{
+interface CustomerProps {
   id: string;
   name: string;
   email: string;
@@ -12,37 +18,56 @@ interface CustomerProps{
 }
 
 export default function App() {
-  const [customers, setCustomers] = useState<CustomerProps[]>([])
+  const [customers, setCustomers] = useState<CustomerProps[]>([]);
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
 
   const loadCustomers = useCallback(async () => {
     const response = await api.get("/customers");
     setCustomers(response.data);
-  }
-, []);
+  }, []);
 
   useEffect(() => {
     loadCustomers();
-  },[loadCustomers])
+  }, [loadCustomers]);
 
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!nameRef.current?.value || !emailRef.current?.value) return;
+
+    const response = await api.post("/customers", {
+      name: nameRef.current?.value,
+      email: emailRef.current?.value,
+    });
+
+    setCustomers(allCustomers => [...allCustomers, response.data])
+  }
 
   return (
     <div className="w-full min-h-screen bg-gray-900 flex justify-center px-4">
       <main className="my-10 w-full md:max-w-2xl">
         <h1 className="text-4xl font-medium text-white">Clientes</h1>
 
-        <form className="flex flex-col my-6">
-          <label htmlFor="customer-name" className="font-medium text-white">Nome:</label>
+        <form className="flex flex-col my-6" onSubmit={handleSubmit}>
+          <label htmlFor="customer-name" className="font-medium text-white">
+            Nome:
+          </label>
           <input
             type="text"
             placeholder="Digite seu nome completo"
             className="w-full mb-5 p-2 rounded bg-white"
+            ref={nameRef}
           />
 
-          <label htmlFor="customer-email" className="font-medium text-white">Email</label>
+          <label htmlFor="customer-email" className="font-medium text-white">
+            Email
+          </label>
           <input
             type="email"
             placeholder="Digite seu nome completo"
             className="w-full mb-5 p-2 rounded bg-white"
+            ref={emailRef}
           />
 
           <input
@@ -52,9 +77,12 @@ export default function App() {
           />
         </form>
 
-        <section className="flex flex-col">
-          {customers.map( (customer: CustomerProps) => (
-            <article key={customer.id} className="w-full bg-white rounded p-2 relative hover:scale-105 duration-350">
+        <section className="flex flex-col gap-4">
+          {customers.map((customer: CustomerProps) => (
+            <article
+              key={customer.id}
+              className="w-full bg-white rounded p-2 relative hover:scale-105 duration-350"
+            >
               <p>
                 <span className="font-medium">Nome:</span> {customer.name}
               </p>
@@ -62,14 +90,17 @@ export default function App() {
                 <span className="font-medium">Email:</span> {customer.email}
               </p>
               <p>
-                <span className="font-medium">Status:</span> {customer.status ? "ATIVO" : "INATIVO"}
+                <span className="font-medium">Status:</span>{" "}
+                {customer.status ? "ATIVO" : "INATIVO"}
               </p>
 
-              <button type="submit" className="bg-red-500 w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 -top-2">
+              <button
+                type="submit"
+                className="bg-red-500 w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 -top-2"
+              >
                 <FiTrash size={18} color="#fff" />
               </button>
             </article>
-
           ))}
         </section>
       </main>
