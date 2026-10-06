@@ -1,182 +1,76 @@
-import { FiTrash } from "react-icons/fi";
-import { FaPencil } from "react-icons/fa6";
-import { FaCheck } from "react-icons/fa";
-import { BiSolidXSquare } from "react-icons/bi";
-import { api } from "./services/api";
-import {
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
-  type SubmitEvent,
-} from "react";
-
-interface CustomerProps {
-  id: string;
-  name: string;
-  email: string;
-  status: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { useCallback, useEffect, useState } from 'react'
+import { CustomerForm } from './components/CustomerForm'
+import { CustomerList } from './components/CustomerList'
+import { api } from './services/api'
+import type { Customer } from './types/customer'
 
 export default function App() {
-  const [customers, setCustomers] = useState<CustomerProps[]>([]);
-  const nameRef = useRef<HTMLInputElement | null>(null);
-  const emailRef = useRef<HTMLInputElement | null>(null);
-  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(
-    null
-  );
-  const [editingEmail, setEditingEmail] = useState("");
+	const [customers, setCustomers] = useState<Customer[]>([])
+	const [isLoading, setIsLoading] = useState(true)
+	const [loadError, setLoadError] = useState(false)
 
-  const loadCustomers = useCallback(async () => {
-    const response = await api.get("/customers");
-    setCustomers(response.data);
-  }, []);
+	const loadCustomers = useCallback(async () => {
+		setIsLoading(true)
+		setLoadError(false)
+		try {
+			const response = await api.get<Customer[]>('/customers')
+			setCustomers(response.data)
+		} catch (error) {
+			console.error('Não foi possível carregar os clientes:', error)
+			setLoadError(true)
+		} finally {
+			setIsLoading(false)
+		}
+	}, [])
 
-  useEffect(() => {
-    loadCustomers();
-  }, [loadCustomers]);
+	useEffect(() => {
+		void loadCustomers()
+	}, [loadCustomers])
 
-  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
+	async function handleCreate(name: string, email: string) {
+		const response = await api.post<Customer>('/customers', { name, email })
+		setCustomers((currentCustomers) => [...currentCustomers, response.data])
+	}
 
-    if (!nameRef.current?.value || !emailRef.current?.value) return;
+	async function handleDelete(id: string) {
+		try {
+			await api.delete(`/customers/${id}`)
+			setCustomers((currentCustomers) =>
+				currentCustomers.filter((customer) => customer.id !== id),
+			)
+		} catch (error) {
+			console.error('Não foi possível excluir o cliente:', error)
+		}
+	}
 
-    const response = await api.post("/customers", {
-      name: nameRef.current?.value,
-      email: emailRef.current?.value,
-    });
+	async function handleUpdateEmail(id: string, email: string) {
+		await api.patch(`/customers/${id}`, { email })
 
-    setCustomers((allCustomers) => [...allCustomers, response.data]);
+		setCustomers((currentCustomers) =>
+			currentCustomers.map((customer) =>
+				customer.id === id ? { ...customer, email } : customer,
+			),
+		)
+	}
 
-    nameRef.current.value = "";
-    emailRef.current.value = "";
-  }
+	return (
+		<div className="w-full min-h-screen bg-gray-900 flex justify-center px-4">
+			<main className="my-10 w-full md:max-w-2xl">
+				<h1 className="text-4xl font-medium text-white">Clientes</h1>
 
-  async function handleDelete(id: string) {
-    try {
-      await api.delete(`/customers/${id}`);
+				<CustomerForm onCreate={handleCreate} />
 
-      const allCustomers = customers.filter((customer) => customer.id !== id);
-      setCustomers(allCustomers);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-
-  function handleEmailUpdate(customer: CustomerProps) {
-    setEditingCustomerId(customer.id);
-    setEditingEmail(customer.email);
-  }
-
-  async function handleSaveEmail(id: string) {
-    const email = editingEmail.trim();
-    if (!email) return;
-
-    try {
-      const response = await api.patch(`/customers/${id}`, { email });
-
-      setCustomers((currentCustomers) =>
-        currentCustomers.map((customer) =>
-          customer.id === id
-            ? { ...customer, email: response.data.email ?? email }
-            : customer
-        ),
-      );
-
-      setEditingCustomerId(null);
-      setEditingEmail("");
-    } catch (error) {
-      console.log("Não foi possível atualizar o email: ", error);
-    }
-  }
-
-  return (
-    <div className="w-full min-h-screen bg-gray-900 flex justify-center px-4">
-      <main className="my-10 w-full md:max-w-2xl">
-        <h1 className="text-4xl font-medium text-white">Clientes</h1>
-
-        <form className="flex flex-col my-6" onSubmit={handleSubmit}>
-          <label htmlFor="customer-name" className="font-medium text-white">
-            Nome:
-          </label>
-          <input
-            type="text"
-            placeholder="Digite seu nome completo"
-            className="w-full mb-5 p-2 rounded bg-white"
-            ref={nameRef}
-          />
-
-          <label htmlFor="customer-email" className="font-medium text-white">
-            Email
-          </label>
-          <input
-            type="email"
-            placeholder="Digite seu nome completo"
-            className="w-full mb-5 p-2 rounded bg-white"
-            ref={emailRef}
-          />
-
-          <input
-            type="submit"
-            value="Cadastrar"
-            className="cursor-pointer w-full p-2 bg-green-500 rounded font-medium"
-          />
-        </form>
-
-        <section className="flex flex-col gap-4">
-          {customers.map((customer: CustomerProps) => (
-            <article
-              key={customer.id}
-              className="w-full bg-white rounded p-2 relative hover:scale-105 duration-350"
-            >
-              <p>
-                <span className="font-medium">Nome:</span> {customer.name}
-              </p>
-              {editingCustomerId === customer.id ? (
-                <div className="flex gap-1">
-                  <input
-                    type="email"
-                    value={editingEmail}
-                    onChange={(event) => setEditingEmail(event.target.value)}
-                    className="border-b border-green-400 focus:border-green-600 focus:outline-none"
-                  />
-                  <button type="button" onClick={() => handleSaveEmail(customer.id)}>
-                    <FaCheck color="#15803D" className="hover:scale-105 duration-350" />
-                  </button>
-                  <button type="button" onClick={() => setEditingCustomerId(null)}>
-                    <BiSolidXSquare color="#B91C1C" className="hover:scale-105 duration-350" />
-                  </button>
-                </div>
-              ): (
-                <p>
-                  <span className="font-medium">Email:</span> {customer.email}
-                </p>
-              )}
-              <p>
-                <span className="font-medium">Status:</span>{" "}
-                {customer.status ? "ATIVO" : "INATIVO"}
-              </p>
-
-              <button
-                type="submit"
-                className="bg-red-500 w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 -top-2"
-                onClick={() => handleDelete(customer.id)}
-              >
-                <FiTrash size={18} color="#fff" className="hover:scale-105 duration-350" />
-              </button>
-              <button
-                type="submit"
-                className="bg-transparent w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 top-7"
-                onClick={() => handleEmailUpdate(customer)}
-              >
-                <FaPencil size={18} color="#000" className="hover:scale-105 duration-350" />
-              </button>
-            </article>
-          ))}
-        </section>
-      </main>
-    </div>
-  );
+				<section aria-label="Lista de clientes">
+					<CustomerList
+						customers={customers}
+						isLoading={isLoading}
+						error={loadError}
+						onRetry={() => void loadCustomers()}
+						onDelete={handleDelete}
+						onUpdateEmail={handleUpdateEmail}
+					/>
+				</section>
+			</main>
+		</div>
+	)
 }
