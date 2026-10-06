@@ -1,4 +1,7 @@
 import { FiTrash } from "react-icons/fi";
+import { FaPencil } from "react-icons/fa6";
+import { FaCheck } from "react-icons/fa";
+import { BiSolidXSquare } from "react-icons/bi";
 import { api } from "./services/api";
 import {
   useCallback,
@@ -21,6 +24,10 @@ export default function App() {
   const [customers, setCustomers] = useState<CustomerProps[]>([]);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(
+    null
+  );
+  const [editingEmail, setEditingEmail] = useState("");
 
   const loadCustomers = useCallback(async () => {
     const response = await api.get("/customers");
@@ -55,6 +62,33 @@ export default function App() {
       setCustomers(allCustomers);
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  function handleEmailUpdate(customer: CustomerProps) {
+    setEditingCustomerId(customer.id);
+    setEditingEmail(customer.email);
+  }
+
+  async function handleSaveEmail(id: string) {
+    const email = editingEmail.trim();
+    if (!email) return;
+
+    try {
+      const response = await api.patch(`/customers/${id}`, { email });
+
+      setCustomers((currentCustomers) =>
+        currentCustomers.map((customer) =>
+          customer.id === id
+            ? { ...customer, email: response.data.email ?? email }
+            : customer
+        ),
+      );
+
+      setEditingCustomerId(null);
+      setEditingEmail("");
+    } catch (error) {
+      console.log("Não foi possível atualizar o email: ", error);
     }
   }
 
@@ -100,9 +134,26 @@ export default function App() {
               <p>
                 <span className="font-medium">Nome:</span> {customer.name}
               </p>
-              <p>
-                <span className="font-medium">Email:</span> {customer.email}
-              </p>
+              {editingCustomerId === customer.id ? (
+                <div className="flex gap-1">
+                  <input
+                    type="email"
+                    value={editingEmail}
+                    onChange={(event) => setEditingEmail(event.target.value)}
+                    className="border-b border-green-400 focus:border-green-600 focus:outline-none"
+                  />
+                  <button type="button" onClick={() => handleSaveEmail(customer.id)}>
+                    <FaCheck color="#15803D" className="hover:scale-105 duration-350" />
+                  </button>
+                  <button type="button" onClick={() => setEditingCustomerId(null)}>
+                    <BiSolidXSquare color="#B91C1C" className="hover:scale-105 duration-350" />
+                  </button>
+                </div>
+              ): (
+                <p>
+                  <span className="font-medium">Email:</span> {customer.email}
+                </p>
+              )}
               <p>
                 <span className="font-medium">Status:</span>{" "}
                 {customer.status ? "ATIVO" : "INATIVO"}
@@ -113,7 +164,14 @@ export default function App() {
                 className="bg-red-500 w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 -top-2"
                 onClick={() => handleDelete(customer.id)}
               >
-                <FiTrash size={18} color="#fff" />
+                <FiTrash size={18} color="#fff" className="hover:scale-105 duration-350" />
+              </button>
+              <button
+                type="submit"
+                className="bg-transparent w-7 h-7 flex items-center justify-center rounded-lg absolute right-0 top-7"
+                onClick={() => handleEmailUpdate(customer)}
+              >
+                <FaPencil size={18} color="#000" className="hover:scale-105 duration-350" />
               </button>
             </article>
           ))}
